@@ -1,5 +1,5 @@
 # dg_python
-Dichotomous Gaussian model implemented in python
+Dichotomized Gaussian model implemented in python
 
 To install, clone the repository and run *pip install dg_python* from within the local directory containing the repository.
 
