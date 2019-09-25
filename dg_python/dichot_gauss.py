@@ -107,7 +107,7 @@ class DichotGauss:
             :param corr: fixed correlation matrix for multivariate Gaussian, assumed to be symmetric.
             Default is the identity matrix.
             :param make_pd: set to True to make input correlation matrix positive definite using Higham algorithm.
-            :param kwargs: hyper-parameters for class Higham (see help(Higham)).
+            :param kwargs: hyper-parameters for class Higham which performs the Higham correction (see help(Higham)).
     """
 
     def __init__(self, num_neur, mean=None, corr=None, make_pd=False, **kwargs):
@@ -130,45 +130,6 @@ class DichotGauss:
 
         self.mean = mean
         self.corr = corr
-
-    def _check_pd(self, cov):
-        """Checks if input covariance matrix is positive definite."""
-        try:
-            np.linalg.cholesky(cov)
-            return True
-        except LinAlgError:
-            return False
-
-    def _check_corr_size(self, _input):
-        """Checks if input correlation matrix has the required shape."""
-        if np.all(list(_input.shape) == [self.num_neur, self.num_neur]) is False:
-            warnings.filterwarnings(action="error",
-                                    message="Shape mismatch. Input matrix should be of size "
-                                            "%d x %d" % (self.num_neur, self.num_neur),
-                                    category=WarningDG)
-
-    def _check_mean_size(self, _input):
-        """Checks if input mean has the required shape."""
-        if _input.shape[-1] != self.num_neur:
-            warnings.warn("Shape mismatch. Last dimension of input mean should be of size %d" % self.num_neur,
-                          WarningDG)
-            raise NotImplementedError
-
-    def do_higham_correction(self, M):
-        """
-        Finds nearest positive definite matrix to the input matrix using the Higham algorithm.
-        """
-        is_pd = self._check_pd(M)  # Check if input matrix is already positive definite.
-        if is_pd is False:
-            if self.make_pd is False:  # Raise warning if input matrix is not pd, and make_pd is False.
-                warnings.warn('Input covariance matrix is not positive definite. Set \'make_pd\' to True to do Higham '
-                              'correction.',
-                              WarningDG)
-                raise NotImplementedError
-            else:
-                warnings.warn('Input covariance matrix is not positive definite. Doing Higham correction.', WarningDG)
-                M = self.higham.higham_correction(M)
-        return M
 
     def sample(self, mean=None, corr=None, repeats=1):
         """
@@ -198,81 +159,42 @@ class DichotGauss:
         z = z.reshape(repeats, -1, self.num_neur)
         z = z + mean
         return heaviside(z.transpose(1, 0, 2))
-        
-        
-# class DichotGaussGeneral:
-#
-#     def __init__(self, num_neur, timebins, trials, cov_sig=None, cov_ns=None, make_pd=False, **kwargs):
-#         """
-#         Creates module for a dichotomous Gaussian model. The model takes the mean value of a multivariate Gaussian as
-#         input, outputs a binary spike count value, assuming that they are independent across timebins, but correlated
-#         across neurons in each timebin. The covariance matrix is a parameter of the model.
-#
-#         Inputs:
-#             :param num_neur: number of neurons in the dataset.
-#             :param timebins: number of timebins in the dataset.
-#             :param timebins: number of repetitions in the dataset.
-#         """
-#
-#         super(DichotGaussGeneral, self).__init__()
-#         self.num_neur = num_neur
-#         self.timebins = timebins
-#         self.trials = trials
-#
-#         self.tril_inds = np.tril_indices(self.num_neur, -1)
-#         self.make_pd = make_pd
-#         self.higham = Higham(**kwargs)
-#
-#         if cov_sig is None:
-#             cov_sig = np.random.randn(self.num_neur, self.num_neur)
-#             cov_sig = make_cov_mat(cov_sig, to_corr=False)
-#
-#         if cov_ns is None:
-#             self.make_pd = True
-#             cov_ns = np.random.randn(self.num_neur, self.num_neur)
-#             cov_ns = make_cov_mat(cov_ns)
-#
-#         if self.make_pd is True:
-#             cov_ns = self.do_higham_correction(cov_ns)
-#             cov_sig = self.do_higham_correction(cov_sig)
-#         self.cov_ns = cov_ns
-#         self.cov_sig = cov_sig
-#
-#         # self.cov = nn.Parameter(cov, requires_grad=True)
-#
-#     def do_higham_correction(self, cov):
-#         is_pd = self._check_pd(cov)
-#         if is_pd is False:
-#             if self.make_pd is False:
-#                 print('Input covariance matrix is not positive definite. Set \'make_pd\' to True to do Higham '
-#                       'correction.')
-#                 raise NotImplementedError
-#             else:
-#                 print('Input covariance matrix is not positive definite. Doing Higham correction.')
-#                 cov = self.higham.higham_correction(cov)
-#         return cov
-#
-#     def forward(self, mean):
-#         # self._check_size(mean)
-#         # cov_mat = self.make_cov_mat()
-#         s = mnorm(np.zeros(self.num_neur), cov=self.cov_sig).rvs(size=self.timebins)
-#         s = np.tile(s, self.trials).reshape(self.trials, self.timebins, -1)
-#         z = mnorm(np.zeros(self.num_neur),
-#                   cov=self.cov_ns
-#                   ).rvs(size=[self.trials, self.timebins])
-#         z = z.reshape(self.trials, self.timebins, self.num_neur)
-#         h = s + z + mean
-#         return heaviside(h.transpose(1, 0, 2))
-#
-#     # def _check_size(self, _input):
-#     #     if (list(_input.shape) == self.num_neur) is False:
-#     #         print("Shape mismatch")
-#     #         raise NotImplementedError
-#
-#     def _check_pd(self, cov):
-#         try:
-#             np.linalg.cholesky(cov)
-#             print('Input covariance matrix is positive definite.')
-#             return True
-#         except LinAlgError:
-#             return False
+
+    def do_higham_correction(self, M):
+        """
+        Finds nearest positive definite matrix to the input matrix using the Higham algorithm.
+        """
+        is_pd = self._check_pd(M)  # Check if input matrix is already positive definite.
+        if is_pd is False:
+            if self.make_pd is False:  # Raise warning if input matrix is not pd, and make_pd is False.
+                warnings.warn('Input covariance matrix is not positive definite. Set \'make_pd\' to True to do Higham '
+                              'correction.',
+                              WarningDG)
+                raise NotImplementedError
+            else:
+                warnings.warn('Input covariance matrix is not positive definite. Doing Higham correction.', WarningDG)
+                M = self.higham.higham_correction(M)
+        return M
+
+    def _check_pd(self, cov):
+        """Checks if input covariance matrix is positive definite."""
+        try:
+            np.linalg.cholesky(cov)
+            return True
+        except LinAlgError:
+            return False
+
+    def _check_corr_size(self, _input):
+        """Checks if input correlation matrix has the required shape."""
+        if np.all(list(_input.shape) == [self.num_neur, self.num_neur]) is False:
+            warnings.filterwarnings(action="error",
+                                    message="Shape mismatch. Input matrix should be of size "
+                                            "%d x %d" % (self.num_neur, self.num_neur),
+                                    category=WarningDG)
+
+    def _check_mean_size(self, _input):
+        """Checks if input mean has the required shape."""
+        if _input.shape[-1] != self.num_neur:
+            warnings.warn("Shape mismatch. Last dimension of input mean should be of size %d" % self.num_neur,
+                          WarningDG)
+            raise NotImplementedError
