@@ -3,7 +3,7 @@ Dichotomized Gaussian model implemented using numpy
 
 This repository mirrors code from the [CorBinian toolbox](https://github.com/mackelab/CorBinian) for fitting and sampling from dichotomized Gaussian models
 
-*Note : CorBinian is written for MATLAB. It contains code for maximum entropy modeling and specific heat analysis, in addition to dichotomized Gaussian models for binary and integer count data, and accounting for spatio-temporal correlations, all of which are **not** implemented here.*
+*Note : CorBinian is written for MATLAB. It contains code for maximum entropy modeling and specific heat analysis, in addition to dichotomized Gaussian models for binary and integer count data, and accounting for spatio-temporal correlations. Here we **only** implement dichotomized Gaussian models binary count data.*
 
 
 To install, clone the repository and run *pip install dg_python* from within the local directory containing the repository.
